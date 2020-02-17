@@ -18,7 +18,7 @@ yarn_gpg="https://dl.yarnpkg.com/debian/pubkey.gpg"
 n_location="/usr/local/bin/n"
 xo_server_dir="/opt/xen-orchestra"
 systemd_service_dir="/lib/systemd/system"
-xo_service="xo-server.service"
+xo_service="orchestra"
 
 # Ensures that Yarn dependencies are installed
 /usr/bin/apt-get update
@@ -63,30 +63,33 @@ for source in $(ls -d /opt/xen-orchestra/packages/xo-server-*); do
     ln -s "$source" /usr/local/lib/node_modules/
 done
 
-if [[ ! -e $systemd_service_dir/$xo_service ]] ; then
-
-/bin/cat << EOF >> $systemd_service_dir/$xo_service
-# Systemd service for XO-Server.
-
-[Unit]
-Description= XO Server
-After=network-online.target
-
-[Service]
-WorkingDirectory=/opt/xen-orchestra/packages/xo-server/
-ExecStart=/usr/local/bin/node ./bin/xo-server
-Restart=always
-SyslogIdentifier=xo-server
-
-[Install]
-WantedBy=multi-user.target
-EOF
+# Check if forever is installed. If not install it and report.
+if [ ! -f "/usr/local/bin/forever" ]; then
+  echo "Installing forever..."
+  yarn global add forever
+  if [ -f "/usr/local/bin/forever" ]; then
+    echo "forever was successfully installed..."
+  fi
 fi
+# Check if forever-service is installed. If not install it and report.
+if [ ! -f "/usr/local/bin/forever-service" ]; then
+  echo "Installing forever-service..."
+  yarn global add forever-service
+  if [ -f "/usr/local/bin/forever-service" ]; then
+    echo "forever-service was successfully installed..."
+  fi
+fi
+# Check if orchestra service is installed. If not install it and report.
+if [ ! -f "/etc/init.d/${xo_service}" ]; then
+echo "Installing Orchestra Service..."
+cd ${xo_server_dir}/packages/xo-server/bin && forever-service install ${xo_service} -r root -s xo-server
+  if [ -f "/etc/init.d/${xo_service}" ]; then
+  echo "Orhcestra Service was successfully installed..."
+fi
+# Start the Xen Orchestra Service
+service ${xo_service} start
 
-/bin/systemctl daemon-reload
-/bin/systemctl enable $xo_service
-/bin/systemctl start $xo_service
-
+# Give default install details to the user
 echo ""
 echo ""
 echo "Installation complete, open a browser to:" && hostname -I && echo "" && echo "Default Login:"admin@admin.net" Password:"admin"" && echo "" && echo "Don't forget to change your password!"
